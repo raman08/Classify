@@ -7,11 +7,6 @@ const ClassSchema = new mongoose.Schema(
 			required: true,
 		},
 
-		// class_id :{
-		//   type: String,
-		//   required : true
-		// },
-
 		inst: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: 'Inst',

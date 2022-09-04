@@ -7,7 +7,6 @@ const flash = require('connect-flash');
 const session = require('express-session');
 const passport = require('passport');
 
-const User = require('./models/User');
 const Inst = require('./models/Institute');
 
 const app = express();
@@ -17,8 +16,6 @@ require('./config/passport')(passport);
 app.use(expressLayouts);
 app.use('/assets', express.static('./assets'));
 app.set('view engine', 'ejs');
-
-const MongoStore = require('connect-mongo');
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());

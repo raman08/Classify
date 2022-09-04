@@ -1,6 +1,4 @@
 const express = require('express');
-const router = express.Router();
-const { ensureAuthenticated } = require('../config/checkAuth');
 const Class = require('../models/Class');
 const Inst = require('../models/Institute');
 const User = require('../models/User');
@@ -10,16 +8,9 @@ var moment = require('moment');
 
 const dateFormator = require('date-and-time');
 
-const jwt = require('jsonwebtoken');
-const JWT_KEY = 'jwtactive987';
-const JWT_RESET_KEY = 'jwtreset987';
 const Assignment = require('../models/Assignment');
 
-const { multerUpload } = require('../utils/multer');
-
 const { sendMail } = require('../utils/genUtils');
-
-const { isFaculty, isStudent } = require('../utils/genUtils.js');
 
 const { uploadFile } = require('../utils/fileUploader');
 
@@ -251,8 +242,6 @@ exports.showAssignment = async (req, res) => {
 
 		console.log(arrHomework);
 
-		let user = await User.findById(userId);
-
 		res.render('Faculty/classes/show_assignment', {
 			userClass,
 			assignment,
@@ -362,6 +351,7 @@ exports.reportStudent = async (req, res) => {
 			'Message Send',
 			'Message Fail to send'
 		);
+
 		await sendMail(
 			req,
 			res,
@@ -372,9 +362,6 @@ exports.reportStudent = async (req, res) => {
 			'Message Send',
 			'Message Fail to send'
 		);
-
-		// student.reported.push(classId) ;
-		// await student.save();
 
 		student.save();
 		res.redirect(redirect_url);

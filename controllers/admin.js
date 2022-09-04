@@ -1,13 +1,10 @@
 const express = require('express');
-const router = express.Router();
-const { ensureAuthenticated } = require('../config/checkAuth');
 const Class = require('../models/Class');
 const Inst = require('../models/Institute');
 const User = require('../models/User');
 const Discussion = require('../models/Discussion');
 const Assignment = require('../models/Assignment');
 const jwt = require('jsonwebtoken');
-const JWT_KEY = 'jwtactive987';
 const JWT_RESET_KEY = 'jwtreset987';
 var moment = require('moment');
 
@@ -15,8 +12,6 @@ const dateFormator = require('date-and-time');
 
 const { sendMail } = require('../utils/genUtils');
 const { uploadFile } = require('../utils/fileUploader');
-
-const { isFaculty, isStudent } = require('../utils/genUtils.js');
 
 exports.getDashboard = async (req, res) => {
 	try {
@@ -30,12 +25,6 @@ exports.getDashboard = async (req, res) => {
 			},
 		});
 
-		// const classes = cls.reverse();
-
-		const students = await User.find({
-			inst: req.user.inst,
-			role: 'student',
-		});
 		const classes_data = cls.classes.reverse();
 
 		res.render('admin/admin_dash', {
@@ -169,22 +158,25 @@ exports.inviteStudentToClass = async (req, res) => {
 			'faculty',
 			'_id name'
 		); //classname
+
 		const inst = cl.inst;
+
 		const students = await User.find({
 			inst: inst,
 			batch: cl.batch,
 			branch: cl.branch,
 			role: 'student',
 		}); //arrstudents
+
 		console.log(students);
+
 		s_mails = students.map(s => s.email);
-		if (s_mails.length == 0) res.send('no student');
+		if (s_mails.length == 0) return res.send('no student');
 		const CLIENT_URL = 'http://' + req.headers.host;
 
 		const token = jwt.sign({ classId }, JWT_RESET_KEY, {
 			expiresIn: '30m',
 		});
-		// const ur = `${CLIENT_URL}/student/join-class/${token}</p>`;
 
 		const url = `${CLIENT_URL}/student/join-class/${token}`;
 		console.log(url);
@@ -202,7 +194,8 @@ exports.inviteStudentToClass = async (req, res) => {
 		const redirect_url = '/admin/show-class/' + classId;
 		const error_flash = 'Oops! Something went wrong! Try Again.';
 		const success_flash = 'Yay!! Invite Send Successfully ;)';
-		sendMail(
+
+		await sendMail(
 			req,
 			res,
 			s_mails,
@@ -217,6 +210,7 @@ exports.inviteStudentToClass = async (req, res) => {
 			userClass: cl,
 			students,
 		});
+
 	} catch (err) {
 		console.log(err);
 		res.render('error_500');
@@ -233,8 +227,6 @@ exports.removeMember = async (req, res) => {
 
 		const arrClassDetails = [];
 
-		const arrDiscussionDetails = [];
-
 		for (let i = 0; i < arrClassIds.length; i++) {
 			console.log(arrClassIds[i]);
 
@@ -242,19 +234,6 @@ exports.removeMember = async (req, res) => {
 		}
 
 		const arrClassDetailsPromise = await Promise.all(arrClassDetails);
-
-		// console.log({arrClassDetailsPromise, arrClassDetails, arrClassIds});
-
-		// for(let i = 0; i < arrClassDetailsPromise.length; i++) {
-		//     arrDiscussionDetails.push(await Discussion.find({classId: arrClassDetailsPromise[i]._id}));
-
-		// }
-
-		// const arrDiscussionDetailsPromise = await Promise.all(arrDiscussionDetails);
-
-		// arrDiscussionDetailsPromise.map(de => de.discussion);
-
-		// res.send(arrDiscussionDetailsPromise);
 
 		const tempClassesPromise = [];
 		for (let i = 0; i < arrClassDetailsPromise.length; i++) {
@@ -269,10 +248,6 @@ exports.removeMember = async (req, res) => {
 		}
 
 		await Promise.all(tempClassesPromise);
-
-		// Class.updateOne({ _id: diveId }, { "$pull": { "students": { "_id": new ObjectId(memberId) } } }, { safe: true }, function(err, obj) {
-		//     //do something smart
-		// });
 
 		await User.deleteOne({ _id: memberId });
 
@@ -362,7 +337,6 @@ exports.showClasswork = async (req, res) => {
 
 exports.showAssignment = async (req, res) => {
 	try {
-		let userId = req.user._id;
 		let { classId, assignmentId } = req.params;
 		let userClass = await Class.findById(classId)
 			.populate('assignments')
@@ -381,9 +355,6 @@ exports.showAssignment = async (req, res) => {
 
 		let arrHomework = assignment.homework;
 
-		console.log(arrHomework);
-
-		let user = await User.findById(userId);
 		res.render('admin/show_assignment', {
 			userClass,
 			assignment,
@@ -405,8 +376,6 @@ exports.showMembers = async (req, res, next) => {
 
 	const arrStudents = classDetails.students;
 	const faculty = classDetails.faculty;
-
-	// console.log(arrStudents, faculty);
 
 	res.render('admin/class_members', {
 		arrStudents,

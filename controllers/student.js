@@ -1,21 +1,16 @@
 const express = require('express');
-const router = express.Router();
-const { ensureAuthenticated } = require('../config/checkAuth');
 const Class = require('../models/Class');
-const Inst = require('../models/Institute');
 const User = require('../models/User');
 const Assignment = require('../models/Assignment');
 const Homework = require('../models/HomeWork');
 const Discussion = require('../models/Discussion');
 const jwt = require('jsonwebtoken');
-const JWT_KEY = 'jwtactive987';
 const JWT_RESET_KEY = 'jwtreset987';
 var moment = require('moment');
 
 const dateFormator = require('date-and-time');
 
 const { uploadFile } = require('../utils/fileUploader');
-const { language_v1beta1 } = require('googleapis');
 const { sendMail } = require('../utils/genUtils');
 
 exports.getDashboard = async (req, res) => {
@@ -32,7 +27,7 @@ exports.getDashboard = async (req, res) => {
 	const classes_data = cls.classes;
 	console.log(classes_data);
 
-	res.render('student/dash', {
+	res.render('Student/dash', {
 		user: req.user,
 		classes_data: classes_data,
 	});
@@ -41,7 +36,6 @@ exports.getDashboard = async (req, res) => {
 exports.joinClass = async (req, res) => {
 	const token = req.params.token;
 	console.log({ token });
-	let errors = [];
 	if (token) {
 		jwt.verify(token, JWT_RESET_KEY, async (err, decodedToken) => {
 			console.log(err);
@@ -68,9 +62,6 @@ exports.joinClass = async (req, res) => {
 				classes.students.push(userId);
 				await classes.save();
 
-				const token = jwt.sign({ classId }, JWT_RESET_KEY, {
-					expiresIn: '30m',
-				});
 				const CLIENT_URL = 'http://' + req.headers.host;
 				const url = `${CLIENT_URL}/student/show-class/${classId}`;
 				const subject =
@@ -208,7 +199,6 @@ exports.showAssignment = async (req, res) => {
 exports.submitAssignment = async (req, res, next) => {
 	try {
 		const userId = req.user._id;
-		const user = await User.findById(userId);
 		const { classId, assignmentId } = req.params;
 		const file = req.file;
 		const userClass = await Class.findById(classId);

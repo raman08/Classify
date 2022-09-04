@@ -1,11 +1,10 @@
 const passport = require('passport');
 const bcryptjs = require('bcryptjs');
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
 const jwt = require('jsonwebtoken');
+
 const JWT_KEY = 'jwtactive987';
 const JWT_RESET_KEY = 'jwtreset987';
+
 const Inst = require('../models/Institute');
 require('dotenv').config();
 
@@ -58,8 +57,6 @@ exports.registerHandle = async (req, res) => {
 				insts: insts,
 			});
 		} else {
-
-			console.log("File Upload Started");
 			if (file) {
 				file.filename = `Users/${email}/${
 					file.originalname.split('.')[0]
@@ -67,7 +64,6 @@ exports.registerHandle = async (req, res) => {
 
 				fileUrl = await uploadFile(file);
 			}
-
 
 			User.findOne({ email: email }).then(user => {
 				if (user) {
@@ -82,7 +78,6 @@ exports.registerHandle = async (req, res) => {
 						insts: insts,
 					});
 				} else {
-					console.log("User is unique");
 
 					const token = jwt.sign(
 						{
@@ -150,7 +145,6 @@ exports.registerHandle = async (req, res) => {
 exports.activateHandle = async (req, res) => {
 	try {
 		const token = req.params.token;
-		let errors = [];
 		if (token) {
 			jwt.verify(token, JWT_KEY, (err, decodedToken) => {
 				if (err) {
@@ -186,6 +180,7 @@ exports.activateHandle = async (req, res) => {
 								inst,
 								role,
 								profileImage: fileUrl,
+								verified: true,
 							});
 
 							if (role == 'student') {
@@ -220,6 +215,8 @@ exports.activateHandle = async (req, res) => {
 			});
 		} else {
 			console.log('Account activation error!');
+			req.flash('error_msg', 'Token is invaild');
+			res.redirect('/auth/login');
 		}
 	} catch (err) {
 		console.log(err);
@@ -251,87 +248,52 @@ exports.forgotPassword = (req, res) => {
 						email,
 					});
 				} else {
-					const oauth2Client = new OAuth2(
-						'1060734479107-d1b9ssit27lpueeupmebq7163hequi6b.apps.googleusercontent.com',
-						'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', // Client Secret
-						'https://developers.google.com/oauthplayground' // Redirect URL
-					);
-
-					oauth2Client.setCredentials({
-						refresh_token:
-							'1//0474S6KpsGMWYCgYIARAAGAQSNwF-L9Iroe09HJZOmtVgnliHUqyqYZmJpdlBnaQzQzdFXOAeQUtPbwNH31ojW2Gkq-vc1_K1XMM',
-					});
-					// const accessToken =
-					// 	'ya29.a0ARrdaM-kRfO3R_cMgmthHEr_6X9O5ULWvRX_AKnuNCSGMikxzsa4zPCat49c8spqp42v0xacbAYdIO2lmONXDUDxCE8YRDro-qKGY-xo26XnuiQ9O-uNWwql6rVonH8ThqutNGMdBdR4_ZZJTu3rCBz1usyF';
-					const accessToken = oauth2Client.getAccessToken();
-					// const accessToken = process.env.accessToken;
-
 					const token = jwt.sign({ _id: user._id }, JWT_RESET_KEY, {
 						expiresIn: '30m',
 					});
 
-					const CLIENT_URL = 'http://' + req.headers.host;
+					User.updateOne(
+						{ resetLink: token },
+						async (err) => {
+							if (err) {
+								errors.push({
+									msg: 'Error resetting password!',
+								});
+								res.render('forgot', {
+									errors,
+									email,
+								});
+							} else {
+								// send mail with defined transport object
+								const CLIENT_URL = 'http://' + req.headers.host;
 
-					const output = `
-                        <h2>Please click on below link to reset your account password</h2>
-                        <p>${CLIENT_URL}/auth/forgot/${token}</p>
-                        <p><b>NOTE: </b> The activation link expires in 30 minutes.</p>
-                    `;
+								const subject =
+									'Account Password Reset: Virtual Classroom 👨‍🎓';
+								const body = `
+									<h2>Please click on below link to reset your account password</h2>
+									<p>${CLIENT_URL}/auth/forgot/${token}</p>
+									<p><b>NOTE: </b> The activation link expires in 30 minutes.</p>
+								`;
 
-					User.updateOne({ resetLink: token }, (err, success) => {
-						if (err) {
-							errors.push({ msg: 'Error resetting password!' });
-							res.render('forgot', {
-								errors,
-								email,
-							});
-						} else {
-							const transporter = nodemailer.createTransport({
-								service: 'gmail',
-								auth: {
-									type: 'OAuth2',
-									user: 'sharmadeeksha325@gmail.com',
-									clientId:
-										'1060734479107-d1b9ssit27lpueeupmebq7163hequi6b.apps.googleusercontent.com',
-									clientSecret:
-										'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',
-									refreshToken:
-										'1//0474S6KpsGMWYCgYIARAAGAQSNwF-L9Iroe09HJZOmtVgnliHUqyqYZmJpdlBnaQzQzdFXOAeQUtPbwNH31ojW2Gkq-vc1_K1XMM',
-									accessToken: accessToken,
-								},
-							});
+								const redirect_url = '/auth/forgot';
+								const error_flash =
+									'Something went wrong on our end. Please try again later.';
+								const success_flash =
+									'Password reset link sent to email ID. Please follow the instructions.';
 
-							// send mail with defined transport object
-							const mailOptions = {
-								from: '"Deeksha Sharma" <sharmadeeksha325@gmail.com>', // sender address
-								to: email, // list of receivers
-								subject:
-									'Account Password Reset: Virtual Classroom 👨‍🎓', // Subject line
-								html: output, // html body
-							};
-
-							transporter.sendMail(mailOptions, (error, info) => {
-								if (error) {
-									console.log(error);
-									req.flash(
-										'error_msg',
-										'Something went wrong on our end. Please try again later.'
-									);
-									res.redirect('/auth/forgot');
-								} else {
-									console.log(
-										'Mail sent : %s',
-										info.response
-									);
-									req.flash(
-										'success_msg',
-										'Password reset link sent to email ID. Please follow the instructions.'
-									);
-									res.redirect('/auth/login');
-								}
-							});
+								await sendMail(
+									req,
+									res,
+									email,
+									subject,
+									body,
+									redirect_url,
+									error_flash,
+									success_flash
+								);
+							}
 						}
-					});
+					);
 				}
 			});
 		}
@@ -381,7 +343,6 @@ exports.resetPassword = (req, res) => {
 	try {
 		var { password, password2 } = req.body;
 		const id = req.params.id;
-		let errors = [];
 
 		if (!password || !password2) {
 			req.flash('error_msg', 'Please enter all fields.');
