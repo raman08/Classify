@@ -9,6 +9,7 @@ const InstSchema = new mongoose.Schema(
 		admin: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: 'User',
+			require: true,
 		},
 		inst: {
 			type: String,

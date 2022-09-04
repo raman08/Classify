@@ -3,7 +3,35 @@ const { google } = require('googleapis');
 const OAuth2 = google.auth.OAuth2;
 require('dotenv').config();
 
-exports.sendMail = (
+const createTransport = async () => {
+	const oauth2Client = new OAuth2(
+		process.env.CLIENT_ID,
+		process.env.CLIENT_SECRET,
+		'https://developers.google.com/oauthplayground'
+	);
+
+	oauth2Client.setCredentials({
+		refresh_token: process.env.REFRESH_TOKEN,
+	});
+
+	const accessToken = process.env.accessToken;
+
+	const transporter = nodemailer.createTransport({
+		service: 'Gmail',
+		auth: {
+			type: 'OAuth2',
+			user: process.env.AUTH_EMAIL,
+			clientId: process.env.CLIENT_ID,
+			accessToken: accessToken,
+			clientSecret: process.env.CLIENT_SECRET,
+			refreshToken: process.env.REFRESH_TOKEN,
+		},
+	});
+
+	return transporter;
+};
+
+exports.sendMail = async (
 	req,
 	res,
 	receivers,
@@ -13,35 +41,10 @@ exports.sendMail = (
 	error_flash,
 	success_flash
 ) => {
-	const oauth2Client = new OAuth2(
-		'1060734479107-d1b9ssit27lpueeupmebq7163hequi6b.apps.googleusercontent.com',
-		'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', // Client Secret
-		'https://developers.google.com/oauthplayground' // Redirect URL
-	);
-
-	oauth2Client.setCredentials({
-		refresh_token:
-			'1//0474S6KpsGMWYCgYIARAAGAQSNwF-L9Iroe09HJZOmtVgnliHUqyqYZmJpdlBnaQzQzdFXOAeQUtPbwNH31ojW2Gkq-vc1_K1XMM',
-	});
-
-	const accessToken = process.env.accessToken;
-
-	const transporter = nodemailer.createTransport({
-		service: 'gmail',
-		auth: {
-			type: 'OAuth2',
-			user: 'sharmadeeksha325@gmail.com',
-			clientId:
-				'1060734479107-d1b9ssit27lpueeupmebq7163hequi6b.apps.googleusercontent.com',
-			clientSecret: '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',
-			refreshToken:
-				'1//04hcR5W4I9E4hCgYIARAAGAQSNwF-L9Ir-tTKyYtxwFiqk9diKtxG6cEyH-OtkBpzSO5zXXTYj0Qi946HFRh1OaFPQMD49-1YQgs',
-			accessToken: accessToken,
-		},
-	});
+	const transporter = await createTransport();
 
 	const mailOptions = {
-		from: '"Deeksha Sharma" <sharmadeeksha325@gmail.com>', // sender address
+		from: process.env.AUTH_EMAIL, // sender address
 		to: receivers, // list of receivers
 		subject: subject, // Subject line
 		generateTextFromHTML: true,
@@ -66,12 +69,6 @@ exports.isFaculty = (req, res, next) => {
 	req.user.role === 'teacher'
 		? next()
 		: res.send('Are u trying to hack us? You little nerd!! 🤓');
-
-	// if(req.user.role == 'teacher')
-	// 	next();
-
-	// else
-	// res.send('Are u trying to hack us? You little nerd!! 🤓')
 };
 
 exports.isStudent = (req, res, next) => {

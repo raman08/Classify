@@ -24,14 +24,6 @@ exports.registerHandle = async (req, res) => {
 
 		let fileUrl = '';
 
-		if (file) {
-			file.filename = `Users/${email}/${
-				file.originalname.split('.')[0]
-			}_${Date.now()}.${file.mimetype.split('/')[1]}`;
-
-			fileUrl = await uploadFile(file);
-		}
-
 		if (
 			!name ||
 			!email ||
@@ -66,6 +58,17 @@ exports.registerHandle = async (req, res) => {
 				insts: insts,
 			});
 		} else {
+
+			console.log("File Upload Started");
+			if (file) {
+				file.filename = `Users/${email}/${
+					file.originalname.split('.')[0]
+				}_${Date.now()}.${file.mimetype.split('/')[1]}`;
+
+				fileUrl = await uploadFile(file);
+			}
+
+
 			User.findOne({ email: email }).then(user => {
 				if (user) {
 					errors.push({ msg: 'Email ID already registered' });
@@ -79,6 +82,8 @@ exports.registerHandle = async (req, res) => {
 						insts: insts,
 					});
 				} else {
+					console.log("User is unique");
+
 					const token = jwt.sign(
 						{
 							name,
@@ -93,9 +98,12 @@ exports.registerHandle = async (req, res) => {
 						JWT_KEY,
 						{ expiresIn: '30m' }
 					);
+
 					const CLIENT_URL = 'http://' + req.headers.host;
 					const ur = `${CLIENT_URL}/auth/activate/${token}`;
+
 					console.log(ur);
+
 					const body = `
                         Dear User,
                         Thanks You for signing up at Virtual Classroom.
@@ -119,7 +127,7 @@ exports.registerHandle = async (req, res) => {
 						'Activation link sent to email ID. Please activate to log in.';
 
 					const redirect_url = '/auth/login';
-					// receivers, subject, body , redirect_url , error_flash, success_flash
+
 					sendMail(
 						req,
 						res,
