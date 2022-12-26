@@ -1,4 +1,4 @@
-# Virtual Classroom
+# Classify
 
 This is a web application which provides a platform for students to access educational resources from anywhere.
 An institution-level online platform that helps students and teachers to interact with each other in this pandemic.
